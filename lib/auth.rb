@@ -138,6 +138,7 @@ module Auth
     if client_secret
       return client['id'] && client['secret'] == client_secret ? Client.new(client) : false
     else
+      client.delete("secret")
       return client['id'] ? Client.new(client) : false
     end
   end
@@ -169,6 +170,21 @@ module Auth
     else
       return false
     end
+  end
+
+  #
+  # Form post code
+  #
+
+  def issue_form_post_code(user, pass)
+    code = generate_secret
+    redis.hmset("form_post_code:#{code}", :user, user, :pass, pass)
+    redis.expire("form_post_code:#{code}", 300) # 5 min
+    code
+  end
+
+  def extract_form_post_code(code)
+    user, pass = redis.hvals("form_post_code:#{code}")
   end
 
   #

@@ -4,6 +4,7 @@ require 'erb'
 require 'cgi'
 require 'uri'
 require 'auth'
+require 'slim'
 
 module Auth
   class Server < Sinatra::Base
@@ -101,21 +102,33 @@ module Auth
       get action do
         sentry.authenticate!(:client)
         validate_redirect_uri!
-        sentry.authenticate!
-        unless ['code', 'token', 'code_and_token', nil].include?(params[:response_type])
+        #unless ['code', 'token', 'code_and_token', nil].include?(params[:response_type])
+        unless ['code', nil].include?(params[:response_type])
           raise UnsupportedResponseType,
             'The authorization server does not support obtaining an ' +
             'authorization code using this method.'
         end
         @client = sentry.user(:client)
-        erb(:authorize)
+        slim(:auth_login)
       end
+    end
+
+    post '/grant' do
+      sentry.authenticate!(:client)
+      validate_redirect_uri!
+      sentry.authenticate!
+      @client = sentry.user(:client)
+      @client.form_post_code = Auth.issue_form_post_code(params[:username], params[:password])
+      slim(:auth_permissions)
     end
 
     ['', '/authorize'].each do |action|
       post action do
         sentry.authenticate!(:client)
+        @client = sentry.user(:client)
+        raise UnauthorizedClient, 'Invalid client' unless @client.secret
         validate_redirect_uri!
+        params[:username], params[:password] = Auth.extract_form_post_code(params[:form_post_code])
         sentry.authenticate!
         case params[:response_type]
         when 'code', nil
@@ -128,35 +141,35 @@ module Auth
             :code => authorization_code,
             :state => params[:state])
           redirect redirect_uri
-        when 'token'
-          ttl = ENV['AUTH_TOKEN_TTL'].to_i
-          access_token = Auth.issue_token(sentry.user.id, params[:scope], ttl)
-          redirect_uri = merge_uri_with_fragment_parameters(
-            params[:redirect_uri],
-            :access_token => access_token,
-            :token_type => 'bearer',
-            :expires_in => ttl,
-            :expires => ttl, # Facebook compatibility
-            :scope => params[:scope],
-            :state => params[:state])
-          redirect redirect_uri
-        when 'code_and_token'
-          ttl = ENV['AUTH_TOKEN_TTL'].to_i
-          authorization_code = Auth.issue_code(sentry.user.id,
-                                               sentry.user(:client).id,
-                                               params[:redirect_uri],
-                                               params[:scope])
-          access_token = Auth.issue_token(sentry.user.id, params[:scope], ttl)
-          redirect_uri = merge_uri_with_fragment_parameters(
-            params[:redirect_uri],
-            :code => authorization_code,
-            :access_token => access_token,
-            :token_type => 'bearer',
-            :expires_in => ttl,
-            :expires => ttl, # Facebook compatibility
-            :scope => params[:scope],
-            :state => params[:state])
-          redirect redirect_uri
+        #when 'token'
+          #ttl = ENV['AUTH_TOKEN_TTL'].to_i
+          #access_token = Auth.issue_token(sentry.user.id, params[:scope], ttl)
+          #redirect_uri = merge_uri_with_fragment_parameters(
+            #params[:redirect_uri],
+            #:access_token => access_token,
+            #:token_type => 'bearer',
+            #:expires_in => ttl,
+            #:expires => ttl, # Facebook compatibility
+            #:scope => params[:scope],
+            #:state => params[:state])
+          #redirect redirect_uri
+        #when 'code_and_token'
+          #ttl = ENV['AUTH_TOKEN_TTL'].to_i
+          #authorization_code = Auth.issue_code(sentry.user.id,
+                                               #sentry.user(:client).id,
+                                               #params[:redirect_uri],
+                                               #params[:scope])
+          #access_token = Auth.issue_token(sentry.user.id, params[:scope], ttl)
+          #redirect_uri = merge_uri_with_fragment_parameters(
+            #params[:redirect_uri],
+            #:code => authorization_code,
+            #:access_token => access_token,
+            #:token_type => 'bearer',
+            #:expires_in => ttl,
+            #:expires => ttl, # Facebook compatibility
+            #:scope => params[:scope],
+            #:state => params[:state])
+          #redirect redirect_uri
         else
           raise UnsupportedResponseType,
             'The authorization server does not support obtaining an ' +

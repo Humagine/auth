@@ -25,6 +25,7 @@ Gem::Specification.new do |s|
   s.add_dependency('rack-contrib',  '~> 1.0')
   s.add_dependency('sinatra',  '~> 1.0')
   s.add_dependency('redis-namespace',  '~> 1.0')
+  s.add_dependency('slim')
 
   s.add_development_dependency('rack-test')
 end

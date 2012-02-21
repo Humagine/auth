@@ -1,0 +1,28 @@
+doctype html
+
+hmtl
+
+  head
+    title Humagine Login
+
+  body
+
+    p Log in to use your Humagine account with
+      a(href=@client.url)= @client.name}
+
+    form(method="post")
+
+      input(type="hidden" name="client_id" value=params[:client_id])
+      input(type="hidden" name="redirect_uri" value=params[:redirect_uri])
+      input(type="hidden" name="scope" value=params[:scope])
+
+      label
+        span.label Email:
+        input(type="text" name="username")
+
+      label
+        span.label Password:
+        input(type="password" name="password")
+
+      button.primary.button(type="submit") Login
+      a.secondary.button(type="button") Cancel
