@@ -14,6 +14,9 @@ require 'auth/sentry'
 module Auth
   include Helpers
   extend self
+  attr_accessor :main_app_client_id
+
+  @main_app_client_id ||= nil
 
   # Accepts:
   #   1. A 'hostname:port' string
@@ -116,6 +119,10 @@ module Auth
   # Clients
   #
 
+  def request_is_from_main_app?(client_id)
+    client_id == @main_app_client_id
+  end
+
   def register_client(client_id, name, redirect_uri)
     raise if client_id.nil? || client_id == ''
     raise if name.nil? || name == ''
@@ -185,6 +192,8 @@ module Auth
 
   def extract_form_post_code(code)
     user, pass = redis.hvals("form_post_code:#{code}")
+    redis.expire("form_post_code:#{code}")
+    [user, pass]
   end
 
   #
